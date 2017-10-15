@@ -1,6 +1,5 @@
 
 from requests import get
-from urllib.request import urlopen
 from bs4 import BeautifulSoup
 import re 
 from time import sleep
@@ -23,8 +22,8 @@ def internallinks(url, n):
 	while n>0:
 		pageslinks=set()
 		for i in linkslist:
-			request=urlopen(i)
-			parser=BeautifulSoup(request,'lxml')
+			request=get(i)
+			parser=BeautifulSoup(request.text,'lxml')
 			for link in parser.find(class_="pageNumbers").findAll("a", href=re.compile("^(/|.*)")):
 				if link.attrs['href'] is not None:
 					listurl=link.attrs['href']
@@ -54,7 +53,6 @@ def gethotelslinks(urllist):
 			if link.attrs['href'] is not None:
 				hotelurl=link.attrs['href']
 				url='https://www.tripadvisor.es'+str(hotelurl)
-				print(url)
 				hotelsList.add(url)
 			else:
 				pass
@@ -69,7 +67,6 @@ def gethotelslinknopages(url):
 		if link.attrs['href'] is not None:
 			hotelurl=link.attrs['href']
 			url='https://www.tripadvisor.es'+str(hotelurl)
-			print(url)
 			hotelsList.add(url)
 		else:
 			pass
@@ -97,7 +94,7 @@ def gethotelsinfo(hotelsList):
 		info[title]=numberofrooms
 		hotelsinformation.append(info)
 	return hotelsinformation
-	
+
 #We need to insert the url complusory, the number of pages we want to retrieve it is optional.	
 def main():
 
