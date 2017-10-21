@@ -26,7 +26,9 @@ class postgre():
            cur = conn.cursor()
         except psycopg2.Error as e:
             raise psycopg2.Error("Hemos registrado el siguiente error: {0}"
-                .format(e))    
+                .format(e))   
+
+
         #we convert the data into a tuple of tuples.
         if type(data) is list:
             if len(data)>0:
@@ -37,7 +39,7 @@ class postgre():
                 else:
                     raise ValueError("formato de datos no adecuado.formato adecuado: "
                         +"Lista de registros,lista de listas,lista de tupla,tupla de " 
-                        +"registros,tupla de listas o tupla de tuplas")
+                        +"registros,tupla de listas o tupla de tuplas.")
             #Just in case we only want to insert one register per row
             else:
                 cleandata=tuple(tuple(i) for i in data)
@@ -50,7 +52,7 @@ class postgre():
                 else:
                     raise ValueError("formato de datos no adecuado.formato adecuado: "
                         +"Lista de registros,Lista de listas,lista de tupla,tupla de " 
-                        +"registros,tupla de listas o tupla de tuplas")
+                        +"registros,tupla de listas o tupla de tuplas.")
             else:
                 #Just in case we only want to insert one register per row                
                 cleandata=tuple(tuple(i) for i in data)
@@ -58,13 +60,11 @@ class postgre():
             raise ValueError("formato de datos no adecuado.formato adecuado: "
                +"Lista de registros,lista de listas,lista de tupla,tupla de registros,"
                +"tupla de listas o tupla de tuplas.")
-        #we split the tuple into smaller tuples.
-        insert_data,clean_data=clean_data[:chunksize],clean_data[chunksize:] 
+        
         #we execute the insert statement.
-        #we create a flag for the case chunksize>cleandata.
-        flag=0
-        if flag==0:
-            str_insert=str(insert_data)
+
+        if chunksize>len(clean_data):
+            str_insert=str(clean_data)
             if str_insert[-2]==",":
                 str_insert=str_insert[1:-2]
             else:
@@ -73,10 +73,11 @@ class postgre():
                 ex=cur.execute("INSERT INTO "+str(table)+
                                " VALUES "+str(str_insert)+";" )
             except Exception as e:
-                   raise Exception("error durante la inserción  {}".format(e))
-            flag=1            
+                   raise Exception("error durante la inserción  {0}".format(e))
         else:
             while len(clean_data)>0:
+                #we split the tuple into smaller tuples.
+                insert_data,clean_data=clean_data[:chunksize],clean_data[chunksize:] 
                 str_insert=str(insert_data)
                 if str_insert[-2]==",":
                     str_insert=str_insert[1:-2]
@@ -86,7 +87,7 @@ class postgre():
                     ex=cur.execute("INSERT INTO "+str(table)+
                                 " VALUES "+str(str_insert)+";" )
                 except Exception as e:
-                    raise Exception("error durante la inserción {e}".format(e))
+                    raise Exception("error durante la inserción {0}".format(e))
                     break
         #we commit the insert 
         conn.commit()
