@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 
 import psycopg2
-
+import credentials
 class postgre():
     '''This class it is just performed for execute multiple row insert in 
     PostgreSQL'''
-    def __init__(self,username,password,host,dbname):
-        self.username=username
-        self.password=password
-        self.host=host
-        self.dbname=dbname
+    def __init__(self,username=credentials.username,
+                password=credentials.password,dbname=credentials.dbname):
+        self.username=credentials.username
+        self.password=credentials.password
+        self.dbname=credentials.dbname
         
     def connect(self):
         try:
@@ -27,7 +27,6 @@ class postgre():
         except psycopg2.Error as e:
             raise psycopg2.Error("Hemos registrado el siguiente error: {0}"
                 .format(e))   
-
 
         #we convert the data into a tuple of tuples.
         if type(data) is list:
@@ -64,28 +63,21 @@ class postgre():
         #we execute the insert statement.
 
         if chunksize>len(clean_data):
-            str_insert=str(clean_data)
-            if str_insert[-2]==",":
-                str_insert=str_insert[1:-2]
-            else:
-                str_insert=str_insert[1:-1]
+            number_of_records = ','.join(['%s'] * len(clean_data))
+            print(number_of_records)
             try:
-                ex=cur.execute("INSERT INTO "+str(table)+
-                               " VALUES "+str(str_insert)+";" )
+                insert_statement="INSERT INTO "+str(table)+" VALUES {0}".format(number_of_records)
+                cur.execute(insert_statement,clean_data)
             except Exception as e:
                    raise Exception("error durante la inserción  {0}".format(e))
         else:
             while len(clean_data)>0:
                 #we split the tuple into smaller tuples.
                 insert_data,clean_data=clean_data[:chunksize],clean_data[chunksize:] 
-                str_insert=str(insert_data)
-                if str_insert[-2]==",":
-                    str_insert=str_insert[1:-2]
-                else:
-                    str_insert=str_insert[1:-1]
+                number_of_records = ','.join(['%s'] * len(insert_data))
                 try:
-                    ex=cur.execute("INSERT INTO "+str(table)+
-                                " VALUES "+str(str_insert)+";" )
+                    insert_statement="INSERT INTO "+str(table)+" VALUES {0}".format(number_of_records)
+                    cur.execute(insert_statement,insert_data)
                 except Exception as e:
                     raise Exception("error durante la inserción {0}".format(e))
                     break
