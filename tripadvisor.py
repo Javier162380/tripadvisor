@@ -6,7 +6,6 @@ from time import sleep
 from sys import argv
 from postgre import postgre
 
-
 # we get all the different pages were we can see a list of all the hotels.
 def internallinks(url, n):
 
@@ -85,7 +84,7 @@ def gethotelsinfo(hotelsList):
     hotelsinformation = []
 
     for i in hotelsList:
-        sleep(2)
+        sleep(5)
         request = get(i)
         parser = BeautifulSoup(request.text, 'lxml')
         hotelreview = []
@@ -102,9 +101,23 @@ def gethotelsinfo(hotelsList):
         except:
             direction = None
         hotelreview.append(direction)
+        # zipcode.
+        try:
+            raw_zipcode = parser.find(class_="content hidden").find(class_="locality").get_text('')
+            zipcode = int(raw_zipcode.split(' ')[0])
+        except:
+            zipcode=None
+        hotelreview.append(zipcode)
+        #city
+        try:
+            raw_city = parser.find(class_="content hidden").find(class_="locality").get_text('')
+            city = raw_city.split(' ')[1].replace(',','')
+        except:
+            city=None
+        hotelreview.append(city)
         # rooms
         try:
-            numberofrooms = parser.find(class_="list number_of_rooms").get_text(';').split(';')[1]
+            numberofrooms = int(parser.find(class_="list number_of_rooms").get_text(';').split(';')[1])
         except:
             numberofrooms = None
         hotelreview.append(numberofrooms)
@@ -134,15 +147,16 @@ def gethotelsinfo(hotelsList):
         # phonenumber
         try:
             phone = parser.find(class_="blEntry phone").get_text()
-            parsephone = "".join(phone.split())
+            parse_phone = "".join(phone.split())
         except:
-            parsephone = None
-        hotelreview.append(parsephone)
+            parse_phone = None
+        hotelreview.append(parse_phone)
+        # hotel information.
         hotelsinformation.append(hotelreview)
     return hotelsinformation
 
 
-# We need to insert the url complusory and the database table were we are going to save the information, 
+# We need to insert the url compulsory and the database table were we are going to save the information,
 # the number of pages we want to retrieve it is optional.  
 def main():
     if len(argv) == 4:
@@ -155,25 +169,23 @@ def main():
         hotelslinks = gethotelslinks(listlinks)
         information = gethotelsinfo(hotelslinks)
         # insert
-        # test database connection
+        # we create an instance of our class postgre.
         database = postgre()
-        connection = database.connect()
         # execute multiple inserts
-        database.execute_multiple_inserts(data=information, table=table, chunksize=1000, conn=connection)
+        database.execute_multiple_inserts(data=information, table=table, chunksize=1000)
 
     elif len(argv) == 3:
         # parameters
         url = argv[1]
         table = argv[2]
-        # functions       
+        # functions
         hotelslinks = gethotelslinknopages(url)
         information = gethotelsinfo(hotelslinks)
         # insert
-        # test database connection
+        # we create an instance of our class postgre.
         database = postgre()
-        connection = database.connect()
         # execute multiple inserts
-        database.execute_multiple_inserts(data=information, table=table, chunksize=1000, conn=connection)
+        database.execute_multiple_inserts(data=information, table=table, chunksize=1000)
 
     else:
         print("Estas introduciendo mal los parametros")
