@@ -1,26 +1,27 @@
 # -*- coding: utf-8 -*-
 
 import psycopg2
-import credentials
 from pandas import DataFrame
 
 
 class postgre():
+
     """This class it is just performed for some specific functionalities in
     PostgreSQL"""
 
-    def __init__(self, username=credentials.username,
-                 password=credentials.password, dbname=credentials.dbname):
-        """Instantiates an instance of postgre. Four parameters are needed:
-           - username
-           -database password
-           -database name """
+    def __init__(self, username,password, dbname):
 
-        self.username = credentials.username
-        self.password = credentials.password
-        self.dbname = credentials.dbname
+        """Create an instance of postgre. Four parameters are needed:
+           -username
+           -database password
+           -database name"""
+
+        self.username = username
+        self.password = password
+        self.dbname = dbname
 
     def execute_multiple_inserts(self, data, table, chunksize):
+
         """This method it perform batch inserts in postgresql.
         We need to insert three arguments:
             -The data we want to insert.
@@ -100,7 +101,7 @@ class postgre():
         cur.close()
         conn.close()
 
-    def postre_to_dataframe(self, query):
+    def postgre_to_dataframe(self, query):
         """This method it is perform to transform an sql query response from postgresql to a pandas DataFrame
             python object."""
 
