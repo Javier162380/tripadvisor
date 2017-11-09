@@ -2,13 +2,14 @@
 from requests import get
 from bs4 import BeautifulSoup
 import re
+import googlemaps
 from time import sleep
 from sys import argv
 from postgre import postgre
 
 # we get all the different pages were we can see a list of all the hotels.
 def internallinks(url, n):
-
+    """This function it is perform to return a set with all the list pages of the site."""
     linkslist = set()
     request = get(url)
     parser = BeautifulSoup(request.text, 'lxml')
@@ -46,7 +47,7 @@ def internallinks(url, n):
 
 # we get all the individual links of all the hotels
 def gethotelslinks(urllist):
-
+    """This function it is perform to retrieve a set with all the hotels pages."""
     hotelslist = set()
     for i in urllist:
         sleep(1)
@@ -63,7 +64,7 @@ def gethotelslinks(urllist):
 
 
 def gethotelslinknopages(url):
-
+    """This function it is perform to retrieve a set with all the hotels pages."""
     hotelslist = set()
     request = get(url)
     sleep(1)
@@ -79,28 +80,44 @@ def gethotelslinknopages(url):
 
 
 # we extract the data we want from the hotels.
-def gethotelsinfo(hotelsList):
-
+def gethotelsinfo(hotelsList,key):
+    """This function it is perform to retrieve a list with all the information of the hotels"""
+    #we create a google maps object.
+    gmaps = googlemaps.Client(key=key)
     hotelsinformation = []
-
     for i in hotelsList:
-        sleep(5)
+        sleep(3)
         request = get(i)
         parser = BeautifulSoup(request.text, 'lxml')
         hotelreview = []
-        # name
+        #name
         try:
             name = parser.find(class_="heading_title").get_text()
             title = re.sub('\n', '', name)
         except:
             title = None
         hotelreview.append(title)
-        # direction
+        # address
         try:
-            direction = parser.find(class_="content hidden").get_text('')
+            address = parser.find(class_="content hidden").get_text('')
         except:
-            direction = None
-        hotelreview.append(direction)
+            address = None
+        hotelreview.append(address)
+        #latitude and longitude
+        if address is None:
+            latitude=None
+            longitude=None
+        else:
+            try:
+                #we make the request to the google maps API.
+                geocode_result = gmaps.geocode(address)
+                latitude=geocode_result[0]['geometry']['location']['lat']
+                longitude=geocode_result[0]['geometry']['location']['lng']
+            except:
+                latitude=None
+                longitude=None
+        hotelreview.append(latitude)
+        hotelreview.append(longitude)
         # zipcode.
         try:
             raw_zipcode = parser.find(class_="content hidden").find(class_="locality").get_text('')
@@ -111,7 +128,7 @@ def gethotelsinfo(hotelsList):
         #city
         try:
             raw_city = parser.find(class_="content hidden").find(class_="locality").get_text('')
-            city = raw_city.split(' ')[1].replace(',','')
+            city = raw_city.split(' ')[1].replace(',', '')
         except:
             city=None
         hotelreview.append(city)
@@ -156,34 +173,43 @@ def gethotelsinfo(hotelsList):
     return hotelsinformation
 
 
-# We need to insert the url compulsory and the database table were we are going to save the information,
+# We need to insert the url compulsory , the database table were we are going to save the information,
+#username, password and dbname of our PostgreSQL, and the gmaps key.
 # the number of pages we want to retrieve it is optional.  
 def main():
-    if len(argv) == 4:
+    if len(argv) == 8:
         # parameters
         url = argv[1]
         table = argv[2]
-        numberofpages = int(argv[3])
+        username=argv[3]
+        password = argv[4]
+        dbname=argv[5]
+        gmapskey=argv[6]
+        numberofpages=int(argv[7])
         # functions
         listlinks = internallinks(url, numberofpages)
         hotelslinks = gethotelslinks(listlinks)
-        information = gethotelsinfo(hotelslinks)
+        information = gethotelsinfo(hotelslinks,gmapskey)
         # insert
         # we create an instance of our class postgre.
-        database = postgre()
+        database = postgre(username, password, dbname)
         # execute multiple inserts
         database.execute_multiple_inserts(data=information, table=table, chunksize=1000)
 
-    elif len(argv) == 3:
+    elif len(argv) == 7:
         # parameters
         url = argv[1]
         table = argv[2]
+        username=argv[3]
+        password = argv[4]
+        dbname=argv[5]
+        gmapskey=argv[6]
         # functions
         hotelslinks = gethotelslinknopages(url)
-        information = gethotelsinfo(hotelslinks)
+        information = gethotelsinfo(hotelslinks,gmapskey)
         # insert
         # we create an instance of our class postgre.
-        database = postgre()
+        database = postgre(username,password,dbname)
         # execute multiple inserts
         database.execute_multiple_inserts(data=information, table=table, chunksize=1000)
 
