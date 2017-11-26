@@ -10,6 +10,7 @@ from postgre import postgre
 
 class Tripadvisor(object):
     """This class is perform to crawl the web site tripadvisor."""
+
     def __init__(self,url,number_of_pages):
         """We need two parameters url , and number of pages"""
         self.url=url
@@ -20,6 +21,7 @@ class Tripadvisor(object):
         hotelslist = set()
         request = get(self.url)
         parser = BeautifulSoup(request.text, 'html.parser')
+        page_load=5
         for link in parser.findAll("a", href=re.compile("^(/|.*)(?=REVIEWS)")):
             if link.attrs['href'] is not None:
                 hotelurl = link.attrs['href']
@@ -42,16 +44,25 @@ class Tripadvisor(object):
                 else:
                     pass
             try:
-                next_page = parser.find(class_="prw_rup prw_common_standard_pagination_resp"
-                                        ).find("a", href=re.compile("^(/|.*)"))
+                next_page = parser.find(class_="prw_rup prw_common_standard_pagination_resp").find("a", href=re.compile("^(/|.*)"))
                 next_page_url = next_page.attrs['href']
+                print(next_page_url)
+                self.number_of_pages = self.number_of_pages - 1
+                if page_load<5:
+                    page_load=page_load+(5-page_load)
+                else:
+                    pass
             except:
                 print(
                     "IndexError(Encontramos un error al extraer la  {0} página volvemos a ejecutar el contenido de esa "
-                    "pagina)".format(str(n)))
+                    "pagina)".format(str(self.number_of_pages)))
                 sleep(1)
-                pass
-            self.number_of_pages = self.number_of_pages - 1
+                if page_load > 0:
+                    page_load = page_load-1
+                    pass
+                else:
+                    raise IndexError("Encontramos un error al extraer la  {0} multiples fallos "
+                                     "salimos ").format(str(self.number_of_pages))
         return hotelslist
 
     def gethotelsinfo(self,hotelsList,key,sleep_request=1):
@@ -59,10 +70,12 @@ class Tripadvisor(object):
         #we create a google maps object.
         gmaps = googlemaps.Client(key=key)
         hotelsinformation = []
+        print(len(hotelsList))
         for i in hotelsList:
             sleep(sleep_request)
+            print(i)
             request = get(i)
-            parser = BeautifulSoup(request.text, 'lxml')
+            parser = BeautifulSoup(request.text, 'html.parser')
             hotelreview = []
             #name
             try:
@@ -168,7 +181,6 @@ def main():
         database = postgre(username, password, dbname)
         # execute multiple inserts
         database.execute_multiple_inserts(data=hotelsinformation, table=table, chunksize=1000)
-
     else:
         print("Los parametros no se introduciendo mal los parammetros")
 
