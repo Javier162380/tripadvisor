@@ -1,17 +1,16 @@
 # -*- coding: utf-8 -*-
-
 import psycopg2
 from pandas import DataFrame
 
 
-class postgre():
+class postgre(object):
 
     """This class it is just performed for some specific functionalities in
     PostgreSQL"""
 
     def __init__(self, username,password, dbname):
 
-        """Create an instance of postgre. Four parameters are needed:
+        """Create an instance of postgre. Three parameters are needed:
            -username
            -database password
            -database name"""
@@ -23,7 +22,7 @@ class postgre():
     def execute_multiple_inserts(self, data, table, chunksize):
 
         """This method it perform batch inserts in postgresql.
-        We need to insert three arguments:
+            We need to insert three arguments:
             -The data we want to insert.
             -The database table name where we are going to store the information
             -The batch size of the insert statement."""
@@ -102,9 +101,10 @@ class postgre():
         conn.close()
 
     def postgre_to_dataframe(self, query):
-        """This method it is perform to transform an sql query response from postgresql to a pandas DataFrame
-            python object."""
 
+        """This method it is perform to transform an sql query response from postgresql to a pandas DataFrame
+        python object.If we want to make dynamic queries the attributes should be pass as the following example
+        "select * from tripadvisor where city='{0}'".format('Madrid') """
         # we create a connection.
         try:
             conn = psycopg2.connect(dbname=self.dbname, user=self.username,
@@ -137,3 +137,45 @@ class postgre():
 
         # we create the data frame.
         return DataFrame.from_records(results, columns=columns_names)
+
+    def postgre_to_jsonapi(self,query):
+
+        """This method it is perform to transform an sql query response from postgresql to a jsonobject list.
+        .If we want to make dynamic queries the attributes should be pass as the following example
+        "select * from tripadvisor where city='{0}'".format('Madrid')"""
+
+        # we create a connection.
+        try:
+            conn = psycopg2.connect(dbname=self.dbname, user=self.username,
+                                    password=self.password)
+        except psycopg2.Error as e:
+            raise psycopg2.Error("Hemos registrado el siguiente error: {0}"
+                                 .format(str(e)))
+
+        # we create a cursor
+        try:
+            cur = conn.cursor()
+        except psycopg2.Error as e:
+            raise psycopg2.Error("Hemos registrado el siguiente error: {0}"
+                                 .format(e))
+        # we execute the query statement.
+        try:
+            cur.execute(query)
+            results = cur.fetchall()
+            # we get the information about the columns names.
+            columns_names = [i[0] for i in cur.description]
+        except psycopg2.Error as e:
+            raise psycopg2.Error("Hemos registrado el siguiente error: {0}"
+                                 .format(e))
+        try:
+            #we create a tuple of columns of the same size of the response.
+            columns_list = tuple(tuple(columns_names) for i in range(len(results)))
+            json = []
+            for field, column_name in zip(results, columns_list):
+                register = {}
+                for value, column in zip(field, column_name):
+                    register[column] = value
+                json.append(register)
+            return json
+        except:
+            return "La consulta no devolvio resultados"
