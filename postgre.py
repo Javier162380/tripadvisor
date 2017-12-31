@@ -3,7 +3,7 @@ import psycopg2
 from pandas import DataFrame
 
 
-class postgre(object):
+class postgre():
 
     """This class it is just performed for some specific functionalities in
     PostgreSQL"""
@@ -18,6 +18,7 @@ class postgre(object):
         self.username = username
         self.password = password
         self.dbname = dbname
+        self.output_formats = {'dataframe': 'dataframe', 'jsonapi': 'jsonapi', 'tuple': 'tuple'}
 
     def execute_multiple_inserts(self, data, table, chunksize):
 
@@ -100,11 +101,17 @@ class postgre(object):
         cur.close()
         conn.close()
 
-    def postgre_to_dataframe(self, query):
+    def postgre_to_output(self, query, output):
 
-        """This method it is perform to transform an sql query response from postgresql to a pandas DataFrame
-        python object.If we want to make dynamic queries the attributes should be pass as the following example
-        "select * from tripadvisor where city='{0}'".format('Madrid') """
+        """This method it is perform to transform an sql query response from postgresql to a different formats dataframe,
+        json_api, tuple etc.If we want to make dynamic queries the attributes should be pass as the following example
+        "select * from tripadvisor where city='{0}'".format('Madrid')"""
+
+        if output in self.output_formats.keys():
+            pass
+        else:
+            raise ValueError("formato de query no valido.Formatos validos dataframe,json,tuple")
+
         # we create a connection.
         try:
             conn = psycopg2.connect(dbname=self.dbname, user=self.username,
@@ -126,56 +133,32 @@ class postgre(object):
             results = cur.fetchall()
             # we get the information about the columns names.
             columns_names = [i[0] for i in cur.description]
-
         except psycopg2.Error as e:
             raise psycopg2.Error("Hemos registrado el siguiente error: {0}"
                                  .format(e))
-
         # we close the cursor and connection.
         cur.close()
         conn.close()
 
-        # we create the data frame.
-        return DataFrame.from_records(results, columns=columns_names)
-
-    def postgre_to_jsonapi(self,query):
-
-        """This method it is perform to transform an sql query response from postgresql to a jsonobject list.
-        .If we want to make dynamic queries the attributes should be pass as the following example
-        "select * from tripadvisor where city='{0}'".format('Madrid')"""
-
-        # we create a connection.
-        try:
-            conn = psycopg2.connect(dbname=self.dbname, user=self.username,
-                                    password=self.password)
-        except psycopg2.Error as e:
-            raise psycopg2.Error("Hemos registrado el siguiente error: {0}"
-                                 .format(str(e)))
-
-        # we create a cursor
-        try:
-            cur = conn.cursor()
-        except psycopg2.Error as e:
-            raise psycopg2.Error("Hemos registrado el siguiente error: {0}"
-                                 .format(e))
-        # we execute the query statement.
-        try:
-            cur.execute(query)
-            results = cur.fetchall()
-            # we get the information about the columns names.
-            columns_names = [i[0] for i in cur.description]
-        except psycopg2.Error as e:
-            raise psycopg2.Error("Hemos registrado el siguiente error: {0}"
-                                 .format(e))
-        try:
-            #we create a tuple of columns of the same size of the response.
-            columns_list = tuple(tuple(columns_names) for i in range(len(results)))
-            json = []
-            for field, column_name in zip(results, columns_list):
-                register = {}
-                for value, column in zip(field, column_name):
-                    register[column] = value
-                json.append(register)
-            return json
-        except:
-            return "La consulta no devolvio resultados"
+        #we retrieve the result in the specific format.
+        if self.output_formats[output] == 'dataframe':
+            return DataFrame.from_records(results, columns=columns_names)
+        elif self.output_formats[output] == 'jsonapi':
+            try:
+                #we create a tuple of columns of the same size of the response.
+                columns_list = tuple(tuple(columns_names) for i in range(len(results)))
+                json = []
+                for field, column_name in zip(results, columns_list):
+                    register = {}
+                    for value, column in zip(field, column_name):
+                        register[column] = value
+                    json.append(register)
+                return json
+            except:
+                return "La consulta no devolvio resultados"
+        elif self.output_formats[output] == 'tuple':
+            if len(results) >= 0 and len(results[0]) == 1:
+                tup = set(register[0] for register in results)
+                return tup
+        else:
+            return results
