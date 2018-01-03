@@ -2,6 +2,7 @@
 import psycopg2
 from pandas import DataFrame
 
+output_formats = {'dataframe': 'dataframe', 'jsonapi': 'jsonapi', 'tuple': 'tuple','login':'login'}
 
 class postgre():
 
@@ -18,7 +19,7 @@ class postgre():
         self.username = username
         self.password = password
         self.dbname = dbname
-        self.output_formats = {'dataframe': 'dataframe', 'jsonapi': 'jsonapi', 'tuple': 'tuple'}
+        self.output_formats = output_formats
 
     def execute_multiple_inserts(self, data, table, chunksize):
 
@@ -160,5 +161,12 @@ class postgre():
             if len(results) >= 0 and len(results[0]) == 1:
                 tup = set(register[0] for register in results)
                 return tup
+            else:
+                return results
+        elif self.output_formats[output] == 'login':
+            login = {}
+            for register in results:
+                login[register[0]] = register[1]
+            return login
         else:
-            return results
+            pass
